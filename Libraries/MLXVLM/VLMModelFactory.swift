@@ -229,6 +229,12 @@ public class VLMRegistry: AbstractModelRegistry, @unchecked Sendable {
         extraEOSTokens: ["<end_of_turn>"]
     )
 
+    static public let gemma4_12B_it_4bit = ModelConfiguration(
+        id: "mlx-community/gemma-4-12B-it-4bit",
+        defaultPrompt: "Describe the image in English",
+        extraEOSTokens: ["<end_of_turn>"]
+    )
+
     static public let gemma4_26BA4B_it_4bit = ModelConfiguration(
         id: "mlx-community/gemma-4-26b-a4b-it-4bit",
         defaultPrompt: "Describe the image in English",
@@ -269,6 +275,7 @@ public class VLMRegistry: AbstractModelRegistry, @unchecked Sendable {
             gemma3_27B_qat_4bit,
             gemma4_E2B_it_4bit,
             gemma4_E4B_it_4bit,
+            gemma4_12B_it_4bit,
             gemma4_26BA4B_it_4bit,
             gemma4_31B_it_4bit,
             smolvlm,

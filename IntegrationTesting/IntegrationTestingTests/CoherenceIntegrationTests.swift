@@ -6,6 +6,7 @@ import IntegrationTestHelpers
 import MLXHuggingFace
 import MLXLLM
 import MLXLMCommon
+import MLXVLM
 import Testing
 import Tokenizers
 
@@ -40,6 +41,16 @@ struct CoherenceIntegrationTests {
     @Test func gemma4_e2b() async throws {
         let container = try await models.llmContainer(for: LLMRegistry.gemma4_e2b_it_4bit)
         try await ChatSessionTests.planetsCoherence(container: container)
+    }
+
+    @Test func gemma4_unified_12B() async throws {
+        let container = try await models.vlmContainer(for: VLMRegistry.gemma4_12B_it_4bit)
+        try await ChatSessionTests.planetsCoherence(container: container)
+    }
+
+    @Test func gemma4_unified_12B_vision() async throws {
+        let container = try await models.vlmContainer(for: VLMRegistry.gemma4_12B_it_4bit)
+        try await ChatSessionTests.visionModel(container: container)
     }
 
     @Test func glm4_9B() async throws {
