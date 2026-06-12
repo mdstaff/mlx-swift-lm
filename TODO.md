@@ -59,10 +59,12 @@ for the adopt-vs-build call and gap table; "Phase 3 implementation — 2026-06-1
   `"gemma4_unified_assistant"` registered. Config decode + centroids-off worked by construction.
 - **Validation:** `Gemma4UnifiedMTPIntegrationTests` (3 tests, all pass) pairing
   `gemma4_12B_it_4bit` target + `mlx-community/gemma-4-12B-it-assistant-bf16` drafter.
-  Factual prompt: **40/67 = 0.597 accept, ~1.08×**; creative prompt: 62/193 = 0.32 accept,
-  **0.83× (net slowdown)**. No sticky passthrough, coherent greedy output. The 12B-4bit target
-  is too fast for the drafter's per-token cost (262k-vocab head) at low acceptance — an
-  economics property, not a defect; 31B-8bit (#308's 1.586×) remains the favorable regime.
+  Prompt-entropy bracket (4 tests after adding the coding prompt): coding **78/144 = 0.542
+  accept, 1.21× — net win**; factual 40/67 = 0.597, ~1.08×; creative 62/193 = 0.32,
+  **0.83× (net slowdown)**. No sticky passthrough, coherent greedy output. Verdict:
+  workload-dependent — the 12B-4bit target is fast enough that the drafter's per-token cost
+  (262k-vocab head) needs ~0.40–0.45 acceptance to break even; low-entropy generation (code)
+  clears it, high-entropy prose doesn't. 31B-8bit (#308's 1.586×) remains uniformly favorable.
 - ⚠️ Test-file gotcha: must `import Tokenizers` (the `#huggingFaceTokenizerLoader()` macro
   expansion references it) AND qualify `any MLXLMCommon.Tokenizer` (repo vendors its own
   `Tokenizer` protocol; bare name is ambiguous).

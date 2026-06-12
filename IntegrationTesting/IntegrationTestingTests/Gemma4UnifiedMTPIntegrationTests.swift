@@ -188,8 +188,29 @@ struct Gemma4UnifiedMTPIntegrationTests {
     /// baseline (no drafter) stream over an identical prompt, tok/s printed
     /// for the writeup. No speedup floor asserted — wall-clock numbers vary
     /// across machines; the diagnostic value is in the logged ratio.
+    ///
+    /// High-entropy creative prompt — measured floor for acceptance on this
+    /// pair (32% on first runs; 0.83–0.84x, a net slowdown).
     @Test
     func testMTP12BUnifiedVsBaselineThroughput() async throws {
+        try await runThroughputComparison(
+            label: "creative",
+            prompt: "Write a short story about a lighthouse keeper who discovers a map.")
+    }
+
+    /// Low-entropy counterpart: code generation is dominated by predictable
+    /// syntax and boilerplate, the regime where the drafter's top-1 should
+    /// match the target most often. Brackets the acceptance range together
+    /// with the creative prompt above and the factual prompt in the
+    /// accepted-drafts test (59.7%).
+    @Test
+    func testMTP12BUnifiedCodingPromptThroughput() async throws {
+        try await runThroughputComparison(
+            label: "coding",
+            prompt: "Write a Swift function that parses a CSV line, handling quoted fields.")
+    }
+
+    private func runThroughputComparison(label: String, prompt: String) async throws {
         guard let loaded = try await loadUnifiedTargetAndDrafter() else {
             Issue.record(
                 "required checkpoint not in HF cache (12B 4-bit target or 12B drafter); skipping"
@@ -197,9 +218,7 @@ struct Gemma4UnifiedMTPIntegrationTests {
             return
         }
 
-        let userInput = UserInput(chat: [
-            .user("Write a short story about a lighthouse keeper who discovers a map.")
-        ])
+        let userInput = UserInput(chat: [.user(prompt)])
         let lmInput = try await loaded.context.processor.prepare(input: userInput)
         let parameters = GenerateParameters(maxTokens: 128, temperature: 0)
 
@@ -236,8 +255,9 @@ struct Gemma4UnifiedMTPIntegrationTests {
         let proposed = mtpInfo.proposedDraftTokens ?? -1
 
         print(
-            "[Gemma4UnifiedMTP 12B throughput] mtp=\(String(format: "%.2f", mtpTokPerSec)) tok/s, baseline=\(String(format: "%.2f", baselineTokPerSec)) tok/s, speedup=\(String(format: "%.2f", speedup))x, accepted=\(accepted)/\(proposed)"
+            "[Gemma4UnifiedMTP 12B throughput \(label)] mtp=\(String(format: "%.2f", mtpTokPerSec)) tok/s, baseline=\(String(format: "%.2f", baselineTokPerSec)) tok/s, speedup=\(String(format: "%.2f", speedup))x, accepted=\(accepted)/\(proposed)"
         )
+        print("[Gemma4UnifiedMTP 12B throughput \(label)] text: \(mtpRun.text)")
 
         #expect(!mtpRun.text.isEmpty, "MTP generated text is empty")
         #expect(!baselineRun.text.isEmpty, "baseline generated text is empty")
