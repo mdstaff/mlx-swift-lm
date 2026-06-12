@@ -182,14 +182,19 @@ public final class Gemma4AssistantDraftModel: Module, MTPDrafterModel {
         // walk (gemma4_assistant.py:79-101): for Gemma 4 the input embedding
         // lives under `.language_model.model.embed_tokens`. `Gemma4Text‐
         // LanguageModel` is not itself a `LanguageModel`, so only the
-        // top-level `Gemma4` is accepted here. Stateless wrt target by
-        // construction (no ivars retain anything derived from `target`).
-        guard let g4 = target as? Gemma4 else {
+        // top-level `Gemma4` / `Gemma4Unified` (same text backbone) are
+        // accepted here. Stateless wrt target by construction (no ivars
+        // retain anything derived from `target`).
+        let textLanguageModel: Gemma4TextLanguageModel
+        switch target {
+        case let g4 as Gemma4: textLanguageModel = g4.languageModel
+        case let g4u as Gemma4Unified: textLanguageModel = g4u.languageModel
+        default:
             fatalError(
                 "Gemma4AssistantDraftModel.draftBlock: target is not a Gemma 4 VLM "
                     + "(got \(type(of: target)))")
         }
-        let backbone = g4.languageModel.model
+        let backbone = textLanguageModel.model
         let inputEmbed = backbone.embedTokens
         let embedScale = backbone.embedScale
 

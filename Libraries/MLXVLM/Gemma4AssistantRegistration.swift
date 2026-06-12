@@ -3,8 +3,8 @@
 import Foundation
 import MLXLMCommon
 
-/// Registers the `gemma4_assistant` model type with the shared MTP drafter
-/// type registry.
+/// Registers the `gemma4_assistant` and `gemma4_unified_assistant` model
+/// types with the shared MTP drafter type registry.
 ///
 /// Callers must invoke this once before loading a drafter (typically at app
 /// launch). Re-registration is idempotent — it overwrites the prior creator
@@ -25,13 +25,20 @@ import MLXLMCommon
 /// ```
 public enum Gemma4AssistantRegistration {
     public static func register() async {
-        await MTPDrafterTypeRegistry.shared.registerModelType(
-            "gemma4_assistant",
-            creator: { data in
-                let config = try JSONDecoder().decode(
-                    Gemma4AssistantConfiguration.self, from: data)
-                return Gemma4AssistantDraftModel(config)
-            }
-        )
+        // The unified-family assistant (e.g. the 12B's
+        // `gemma4_unified_assistant`) is the same draft architecture —
+        // mlx-vlm ships it as a re-export of the gemma4 assistant, and
+        // `Gemma4TextConfiguration` auto-detects the unified text_config
+        // from its model_type.
+        for modelType in ["gemma4_assistant", "gemma4_unified_assistant"] {
+            await MTPDrafterTypeRegistry.shared.registerModelType(
+                modelType,
+                creator: { data in
+                    let config = try JSONDecoder().decode(
+                        Gemma4AssistantConfiguration.self, from: data)
+                    return Gemma4AssistantDraftModel(config)
+                }
+            )
+        }
     }
 }

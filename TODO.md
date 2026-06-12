@@ -47,15 +47,28 @@ Branch **`gemma-4-12b-local-validation`** (off PR #327 @ `75c77d5`), pushed to `
 3. `TODO.md` (this file).
 → Owner verdict: keep on the fork, don't upstream / no PR. (`origin`=ml-explore upstream — do not push.)
 
-## Next: Phase 3 — drafter / speculative decoding (MTP)
-**Central finding:** `SpeculativeTokenIterator` (`Libraries/MLXLMCommon/Evaluate.swift:733`) is
-**vanilla-draft-only** (tokens→logits, disjoint draft cache) and **cannot express the gemma4 MTP drafter**
-(needs target `last_hidden_state` → `pre_projection` + KV shared from target). Phase 3 = extend the
-speculative loop + plumb target hidden states, not just register a model.
-- **Pivotal:** assess PRs **#267 / #269 / #308** (adopt-vs-build) — needs `gh`/network.
-- Then write the Phase-3 gap table + remediation in `~/Projects/Research/gemma-4-12b/wiki/RECON.md`
-  (see its "Phase 3 scoping" section for the open questions). Benchmark target ≈2× (QAT-MTP post).
-- Still out of scope unless asked: audio/video processor paths (model-side only in #327).
+## Phase 3 — drafter / MTP: DONE 2026-06-12 (#308 adopted + extended for unified, validated on-device)
+Full analysis: `~/Projects/Research/gemma-4-12b/wiki/RECON.md` ("Phase 3 resolution — 2026-06-09"
+for the adopt-vs-build call and gap table; "Phase 3 implementation — 2026-06-12" for results).
+- **#308 MERGED upstream 2026-06-11** (`e145aca`); this branch merged `origin/main` @ `e3cb1e1`
+  as **`d07374e`** — 6 conflict hunks vs our #327 layer hand-resolved (signature unions of
+  `tokenTypeIds` × `emitDrafterState`; kept un-chunked image prefill over #337's chunk loop —
+  the bidirectional vision overlay can't span chunk boundaries).
+- **Unified extension (G2–G4):** `Gemma4Unified.callAsFunction(_:cache:state:)` reading
+  `mtpEmitFlagKey`; `draftBlock` target cast widened to `Gemma4 | Gemma4Unified`;
+  `"gemma4_unified_assistant"` registered. Config decode + centroids-off worked by construction.
+- **Validation:** `Gemma4UnifiedMTPIntegrationTests` (3 tests, all pass) pairing
+  `gemma4_12B_it_4bit` target + `mlx-community/gemma-4-12B-it-assistant-bf16` drafter.
+  Factual prompt: **40/67 = 0.597 accept, ~1.08×**; creative prompt: 62/193 = 0.32 accept,
+  **0.83× (net slowdown)**. No sticky passthrough, coherent greedy output. The 12B-4bit target
+  is too fast for the drafter's per-token cost (262k-vocab head) at low acceptance — an
+  economics property, not a defect; 31B-8bit (#308's 1.586×) remains the favorable regime.
+- ⚠️ Test-file gotcha: must `import Tokenizers` (the `#huggingFaceTokenizerLoader()` macro
+  expansion references it) AND qualify `any MLXLMCommon.Tokenizer` (repo vendors its own
+  `Tokenizer` protocol; bare name is ambiguous).
+- Unexplored follow-ups: blockSize sweep (2–3 at low acceptance), 8-bit drafter, longer runs.
+- Still out of scope unless asked: audio/video processor paths (model-side only in #327);
+  upstream follow-up PR (needs owner sign-off; #327 itself is now CONFLICTING vs main).
 
 ## Notes
 - `IntegrationTesting/IntegrationTesting.xcodeproj` uses its **own** DerivedData → first build re-resolves
