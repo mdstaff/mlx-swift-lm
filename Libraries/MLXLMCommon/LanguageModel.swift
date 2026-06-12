@@ -142,7 +142,8 @@ public struct LMInput {
     }
 
     public init(
-        text: LMInput.Text, image: LMInput.ProcessedImage? = nil,
+        text: LMInput.Text,
+        image: LMInput.ProcessedImage? = nil,
         video: LMInput.ProcessedVideo? = nil,
         audio: LMInput.ProcessedAudio? = nil
     ) {
