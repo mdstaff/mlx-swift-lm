@@ -184,13 +184,15 @@ struct Gemma4UnifiedMTPIntegrationTests {
         #expect(!run.text.isEmpty, "MTP generated text is empty")
     }
 
-    /// Throughput comparison on the same loaded pair: one MTP stream and one
-    /// baseline (no drafter) stream over an identical prompt, tok/s printed
-    /// for the writeup. No speedup floor asserted — wall-clock numbers vary
-    /// across machines; the diagnostic value is in the logged ratio.
+    /// Throughput comparison on the same loaded pair: one baseline (no
+    /// drafter) stream and one MTP stream over an identical prompt, tok/s
+    /// printed for the writeup. No speedup floor asserted — wall-clock
+    /// numbers vary across machines; the diagnostic value is in the logged
+    /// ratio.
     ///
     /// High-entropy creative prompt — measured floor for acceptance on this
-    /// pair (32% on first runs; 0.83–0.84x, a net slowdown).
+    /// pair (32%; 0.83–0.84x, a net slowdown — measured before the warmup
+    /// run was added, with MTP first on a cold pair).
     @Test
     func testMTP12BUnifiedVsBaselineThroughput() async throws {
         try await runThroughputComparison(
@@ -210,6 +212,17 @@ struct Gemma4UnifiedMTPIntegrationTests {
             prompt: "Write a Swift function that parses a CSV line, handling quoted fields.")
     }
 
+    /// Mid-entropy factual prompt — same prompt as the accepted-drafts test
+    /// (59.7% acceptance there). Gives the factual class a within-run
+    /// throughput number; the ~1.08x previously in RECON was estimated
+    /// across separate runs.
+    @Test
+    func testMTP12BUnifiedFactualPromptThroughput() async throws {
+        try await runThroughputComparison(
+            label: "factual",
+            prompt: "Why is the sky blue? Explain in one paragraph.")
+    }
+
     private func runThroughputComparison(label: String, prompt: String) async throws {
         guard let loaded = try await loadUnifiedTargetAndDrafter() else {
             Issue.record(
@@ -222,6 +235,22 @@ struct Gemma4UnifiedMTPIntegrationTests {
         let lmInput = try await loaded.context.processor.prepare(input: userInput)
         let parameters = GenerateParameters(maxTokens: 128, temperature: 0)
 
+        // The first stream on a freshly loaded pair pays one-time costs
+        // (Metal kernel compilation, memory-pool growth); discard a short
+        // warmup so neither timed stream absorbs them.
+        _ = await collect(
+            try generate(
+                input: lmInput,
+                parameters: GenerateParameters(maxTokens: 16, temperature: 0),
+                context: loaded.context
+            ))
+
+        let baselineRun = await collect(
+            try generate(
+                input: lmInput,
+                parameters: parameters,
+                context: loaded.context
+            ))
         let mtpRun = await collect(
             try generate(
                 input: lmInput,
@@ -229,12 +258,6 @@ struct Gemma4UnifiedMTPIntegrationTests {
                 context: loaded.context,
                 mtpDrafter: loaded.drafter,
                 blockSize: 4
-            ))
-        let baselineRun = await collect(
-            try generate(
-                input: lmInput,
-                parameters: parameters,
-                context: loaded.context
             ))
 
         guard let mtpInfo = mtpRun.info, let baselineInfo = baselineRun.info else {
