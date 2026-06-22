@@ -28,22 +28,8 @@ import Tokenizers
 
 // MARK: - Helpers
 
-private func hfSnapshotDir(modelId: String) -> URL? {
-    let home = FileManager.default.homeDirectoryForCurrentUser
-    let hub = home.appendingPathComponent(".cache/huggingface/hub")
-    let folderName = "models--" + modelId.replacingOccurrences(of: "/", with: "--")
-    let snapshots = hub.appendingPathComponent(folderName).appendingPathComponent("snapshots")
-    guard
-        let entries = try? FileManager.default.contentsOfDirectory(
-            at: snapshots, includingPropertiesForKeys: nil)
-    else { return nil }
-    return entries.first
-}
-
-private struct LoadedPair {
-    let context: ModelContext
-    let drafter: any MTPDrafterModel
-}
+// `hfSnapshotDir(modelId:)` and `MTPLoadedPair` are provided by
+// `IntegrationTestHelpers`.
 
 /// Recording `LogitProcessor` for the emit-only invariant test
 /// `testMTPLogitProcessorReceivesOnlyEmittedTokens`. Struct so that
@@ -63,7 +49,7 @@ private func loadTargetAndDrafter(
     targetModelId: String,
     drafterModelId: String,
     drafterConfigType: any Codable.Type = Gemma4AssistantConfiguration.self
-) async throws -> LoadedPair? {
+) async throws -> MTPLoadedPair? {
     guard let targetDir = hfSnapshotDir(modelId: targetModelId) else { return nil }
     guard let drafterDir = hfSnapshotDir(modelId: drafterModelId) else { return nil }
 
@@ -86,7 +72,7 @@ private func loadTargetAndDrafter(
     let drafter = Gemma4AssistantDraftModel(cfg)
     try loadWeights(modelDirectory: drafterDir, model: drafter)
 
-    return LoadedPair(context: context, drafter: drafter)
+    return MTPLoadedPair(context: context, drafter: drafter)
 }
 
 // MARK: - 31B end-to-end iterator exercise

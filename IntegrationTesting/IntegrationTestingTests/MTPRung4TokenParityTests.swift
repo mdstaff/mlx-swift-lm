@@ -26,17 +26,7 @@ private func mtpFixturesDirOrSkip(name: String) async -> URL? {
     }
 }
 
-private func hfSnapshotDir(modelId: String) -> URL? {
-    let home = FileManager.default.homeDirectoryForCurrentUser
-    let hub = home.appendingPathComponent(".cache/huggingface/hub")
-    let folderName = "models--" + modelId.replacingOccurrences(of: "/", with: "--")
-    let snapshots = hub.appendingPathComponent(folderName).appendingPathComponent("snapshots")
-    guard
-        let entries = try? FileManager.default.contentsOfDirectory(
-            at: snapshots, includingPropertiesForKeys: nil)
-    else { return nil }
-    return entries.first
-}
+// `hfSnapshotDir(modelId:)` is provided by `IntegrationTestHelpers`.
 
 // MARK: - Shared bound drafter
 //

@@ -31,57 +31,16 @@ import Tokenizers
 private let unifiedTargetModelId = "mlx-community/gemma-4-12B-it-4bit"
 private let unifiedDrafterModelId = "mlx-community/gemma-4-12B-it-assistant-bf16"
 
-private func hfSnapshotDir(modelId: String) -> URL? {
-    let home = FileManager.default.homeDirectoryForCurrentUser
-    let hub = home.appendingPathComponent(".cache/huggingface/hub")
-    let folderName = "models--" + modelId.replacingOccurrences(of: "/", with: "--")
-    let snapshots = hub.appendingPathComponent(folderName).appendingPathComponent("snapshots")
-    guard
-        let entries = try? FileManager.default.contentsOfDirectory(
-            at: snapshots, includingPropertiesForKeys: nil)
-    else { return nil }
-    return entries.first
-}
-
-private struct LoadedPair {
-    let context: ModelContext
-    let drafter: any MTPDrafterModel
-}
-
-private func loadUnifiedTargetAndDrafter() async throws -> LoadedPair? {
-    guard let targetDir = hfSnapshotDir(modelId: unifiedTargetModelId) else { return nil }
-    guard let drafterDir = hfSnapshotDir(modelId: unifiedDrafterModelId) else { return nil }
-
-    let context = try await VLMModelFactory.shared.load(
-        from: targetDir,
-        using: #huggingFaceTokenizerLoader()
+/// Thin wrapper over the shared `loadMTPPair` (in `IntegrationTestHelpers`)
+/// that pins this suite's unified 12B target + drafter ids. The registry +
+/// factory path it runs keeps the `gemma4_unified_assistant` creator key on
+/// the tested path.
+private func loadUnifiedTargetAndDrafter() async throws -> MTPLoadedPair? {
+    try await loadMTPPair(
+        targetId: unifiedTargetModelId,
+        drafterId: unifiedDrafterModelId,
+        targetTokenizerLoader: #huggingFaceTokenizerLoader()
     )
-
-    // Load the drafter through the registry + factory (not by direct
-    // construction) so the `gemma4_unified_assistant` creator key is on the
-    // tested path.
-    await Gemma4AssistantRegistration.register()
-    let container = try await MTPDrafterModelFactory.shared.loadContainer(
-        from: drafterDir, using: NoOpTokenizerLoader()
-    )
-    let drafter = await container.perform { ctx in
-        ctx.model as? any MTPDrafterModel
-    }
-    guard let drafter else { return nil }
-
-    return LoadedPair(context: context, drafter: drafter)
-}
-
-/// `MTPDrafterModelFactory` ignores the loader (drafters borrow their
-/// target's tokenizer), but the protocol requires a non-optional argument.
-/// Throws (rather than traps) so an invariant break fails the test instead
-/// of killing the process.
-private struct UnexpectedTokenizerLoad: Error {}
-
-private final class NoOpTokenizerLoader: TokenizerLoader {
-    func load(from url: URL) async throws -> any MLXLMCommon.Tokenizer {
-        throw UnexpectedTokenizerLoad()
-    }
 }
 
 private struct CollectedRun {
